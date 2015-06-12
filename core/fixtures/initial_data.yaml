@@ -3,6 +3,7 @@
   fields:
     title: perashki.ru
     url: http://www.perashki.ru/
+    sync_url: http://www.perashki.ru/Piro/New/
 - model: core.source
   pk: 2
   fields:
@@ -15,3 +16,9 @@
     title: stishkipirozhki.ru
     url: http://www.stishkipirozhki.ru
     sync_url: http://www.stishkipirozhki.ru/?feed=rss2
+- model: core.source
+  pk: 4
+  fields:
+    title: bash.org.ru
+    url: http://bash.im
+    sync_url: http://bash.im/rss

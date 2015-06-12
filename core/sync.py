@@ -1,65 +1,122 @@
 from datetime import datetime
-import os, re
+import sys
+import os
+import re
 import feedparser
 from core.models import Pasty
 
+if sys.version_info[0] > 2:
+    from urllib.request import Request, urlopen
+    from urllib.parse import quote_plus, urlparse, parse_qs
+else:
+    from urllib2 import Request, urlopen
+    from urlparse import urlparse, parse_qs
+
+try:
+    from bs4 import BeautifulSoup
+except ImportError:
+    from BeautifulSoup import BeautifulSoup
+
 
 def sync_rss_source(source):
-    if not source.parser() in globals():
-        print('parser %s not found for' % source.parser())
-        return
-    print('feeding data from ' + source.title)
-    try:
-        data = feedparser.parse(source.sync_url)
-        sync_date = to_date(data.feed.updated_parsed)
-        if source.sync_date and source.sync_date >= sync_date:
-            print('source is already up to date')
-            return
-        for entry in data.entries:
-            pastry = globals()[source.parser()](sync_date, source, entry)
-            # Save only if pastry is newer than previous sync date
-            if pastry and (not source.sync_date or pastry.date > source.sync_date):
-                pastry.save()
-                print('saved pastry %s' % pastry)
-        source.sync_date = sync_date
-        source.save()
-        print('successful sync for date %s' % sync_date)
-    except Exception as e:
-        print('sync failed: %s' % e)
+
+    entries = []
+
+    if source.parser() in globals():
+        entries = globals()[source.parser()](source)
+    else:
+        entries = default_parser(source)
+
+    for entry in entries:
+        if not Pasty.objects.filter(unique_key=entry.get('id')):
+            print(entry.get('id'))
+            p = Pasty(text=entry.get('text'), date=entry.get('date'), source=entry.get('source'), unique_key=entry.get('id'))
+            p.save()
 
 
-# TODO: how should I parse perashki.ru?!
-
-def strip(text):
-    strip_pattern = re.compile('</?p>|</?div>')
+def replace_br_to_newline(text):
+    # strip_pattern = re.compile('</?p>|</?div>|</?a>|</?span>')
     br_pattern = re.compile('<br ?/?>')
     space_pattern = re.compile('\s\s+')
-    text = strip_pattern.sub('', text)
+    # text = strip_pattern.sub('', text)
     text = space_pattern.sub(' ', text)
     text = br_pattern.sub(os.linesep, text)
     return text
 
-def to_date(feed_date):
-    if not feed_date:
-        return None
-    return datetime(feed_date[0], feed_date[1], feed_date[2], feed_date[3], feed_date[4], feed_date[5])
+
+def get_page(url):
+    """
+    Request the given URL and return the response page, using the cookie jar.
+
+    @type  url: str
+    @param url: URL to retrieve.
+
+    @rtype:  str
+    @return: Web page retrieved for the given URL.
+    """
+    request = Request(url)
+    request.add_header('User-Agent',
+                       'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 6.0)')
+    response = urlopen(request)
+    http_message = response.info()
+    full = http_message.type  # 'text/plain'
+
+    ret = response.read()
+
+    response.close()
+
+    return ret
+
+def perashki_ru(source):
+    ret = []
+
+    row = get_page(source.sync_url)
+
+    soup = BeautifulSoup(row)
+
+    for entry in soup.findAll('div', {"class": "PiroEntry"}):
+        e = {}
+
+        e['id'] = entry['id']
+
+        entry_text = entry.find('div', {"class": "Text"})
+        e['text'] = entry_text.text
+
+        entry_date = entry.find('span', {"class": "date"})
+        e['date'] = datetime.strptime(entry_date.text, '%d.%m.%Y')
+
+        e['source'] = source.url
+
+        if len(e.get('text', '')) > 0:
+            ret.append(e)
+
+    return ret
 
 
-def pirozhki_ru_livejournal_com(sync_date, source, entry):
-    p = Pasty()
-    p.text = strip(entry['summary_detail']['value'])
-    p.date = to_date(entry['published_parsed'])
-    if not p.date: p.date = sync_date
-    p.source = source.url
-    if len(p.text) > 255:
-        return None
-    return p
+def default_parser(source):
 
+    ret = []
 
-def stishkipirozhki_ru(sync_date, source, entry):
-    p = Pasty()
-    p.text = strip(entry['content'][0]['value'])
-    p.date = to_date(entry['published_parsed'])
-    if not p.date: p.date = sync_date
-    p.source = source.url
-    return p
+    if source.sync_url:
+        data = feedparser.parse(source.sync_url)
+        if data.feed.get('title', False):
+            for entry in data.entries:
+                e = {}
+                if entry.get('id', False):
+                    e['id'] = entry.get('id')
+
+                if entry.get('summary', False):
+                    soup = BeautifulSoup(replace_br_to_newline(entry.get('summary')))
+                    e['text'] = soup.text.strip()
+
+                if entry.get('published_parsed', False):
+                    e['date'] = datetime(entry.published_parsed[0], entry.published_parsed[1],
+                                         entry.published_parsed[2], entry.published_parsed[3],
+                                         entry.published_parsed[4], entry.published_parsed[5])
+
+                e['source'] = source.url
+
+                if len(e.get('text', '')) > 0:
+                    ret.append(e)
+
+    return ret

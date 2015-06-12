@@ -1,0 +1,15 @@
+{% extends 'core/base.html' %}
+
+{% block script %}
+    <script>
+        config = {
+            url: '{% url 'one' %}'
+        };
+    </script>
+    <script src="{{ STATIC_URL }}js/pasty.js"></script>
+{% endblock %}
+
+{% block content %}
+    <a class="nav sources" href="/sources">Источники &rarr;</a>
+    <div id="wrapper"></div>
+{% endblock %}

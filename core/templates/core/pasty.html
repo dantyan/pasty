@@ -1,4 +1,12 @@
-<div class="box pasty">
-    <p class="box pre">{{ text }}</p>
-    <cite>&mdash;&nbsp;<a id="sig" target="blank" href="{{ source }}">{{ title }}</a></cite>
-</div>
+{% if pasty %}
+    <div class="box pasty">
+        <p>
+            {% autoescape off %}
+                {{ pasty.text|linebreaksbr|truncatewords_html:25 }}
+            {% endautoescape %}
+        </p>
+        <cite>&mdash;&nbsp;<a id="sig" target="blank" href="{{ pasty.source }}">{{ pasty.source_title }}</a> <span title="votes">{{ pasty.votes }}</span> </cite>
+    </div>
+{% else %}
+    <div class="box pasty">Нету пирожков :-(</div>
+{% endif %}

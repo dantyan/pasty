@@ -7,15 +7,19 @@ input {
     font: 100% "Helvetica", sanf-serif;
 }
 
+
 div.pasty {
     position: relative;
     width: 20em;
-    height: 10em;
+    min-height: 10em;
     background: #eee;
     border: 1px solid #999;
     border-radius: 5px;
     box-shadow: 5px 5px 5px;
     font-size:200%;
+    margin-left: auto;
+    margin-right: auto;
+    font-family: 'Open Sans', sans-serif;
 }
 
 div.sources {
@@ -62,9 +66,9 @@ li {
     -webkit-box-pack: center;
 }
 
-.pre {
-    white-space: pre;
-}
+/*.pre {*/
+    /*white-space: pre;*/
+/*}*/
 
 .nav {
     font-size: 75%;

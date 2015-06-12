@@ -10,23 +10,18 @@ class Pasty(models.Model):
     text = models.TextField(u'Текст пирожка')
     date = models.DateTimeField(u'Дата публикации', blank=True, null=True)
     source = models.URLField(u'Источник', blank=True)
-    votes = models.IntegerField(u'Голосов', default=0, null=True)
-    source_pattern = re.compile(r'''http://(?:www\.)?(.+)''')
-
-    def short_text(self):
-        return self.text[:37].replace(os.linesep, ' \ ') + '...'
+    votes = models.IntegerField(u'Голосов', default=1, null=True)
+    unique_key = models.CharField(
+        max_length=150,
+        editable=False,
+        unique=True,
+    )
 
     def source_title(self):
         return urlparse(self.source).hostname
 
     def __unicode__(self):
-        return self.short_text()
-
-    @staticmethod
-    def rnd():
-        if Pasty.objects.count() == 0:
-            return None
-        return Pasty.objects.order_by('?')[0]
+        return self.text
 
 
 class Source(models.Model):
@@ -34,6 +29,7 @@ class Source(models.Model):
     url = models.URLField(u'Ссылка')
     sync_url = models.URLField(u'URL синхронизации', blank=True)
     sync_date = models.DateTimeField(u'Дата последней синхронизации', blank=True, null=True)
+
     parser_pattern = re.compile('[.-]')
 
     def __unicode__(self):
